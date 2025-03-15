@@ -89,6 +89,8 @@ typedef struct process_t {
 
   // accounting. added @lab3_3
   int tick_count;
+
+  int ref;  // 子进程数
 }process;
 
 // switch to run user app

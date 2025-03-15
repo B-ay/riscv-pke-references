@@ -10,6 +10,7 @@
 #include "vmm.h"
 #include "sched.h"
 #include "util/functions.h"
+#include "string.h"
 
 #include "spike_interface/spike_utils.h"
 
@@ -68,13 +69,25 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
       // hint: first allocate a new physical page, and then, maps the new page to the
       // virtual address that causes the page fault.
       // panic( "You need to implement the operations that actually handle the page fault in lab2_3.\n" );
-      if(stval < 0x7ffff000)
-        {
-          void* pa = alloc_page();
-          user_vm_map((pagetable_t)current->pagetable,ROUNDDOWN(stval,PGSIZE), PGSIZE, (uint64)pa,prot_to_type(PROT_WRITE | PROT_READ, 1));
-        }
-      else
-        panic("In page fault illegal va.\n");
+      // if(stval < 0x7ffff000)
+      //   {
+      //     void* pa = alloc_page();
+      //     user_vm_map((pagetable_t)current->pagetable,ROUNDDOWN(stval,PGSIZE), PGSIZE, (uint64)pa,prot_to_type(PROT_WRITE | PROT_READ, 1));
+      //   }
+      // else
+      //   panic("In page fault illegal va.\n");
+      pte_t* pte = page_walk(current->pagetable, stval, 1);
+      if ((RSW((*pte))) == 1) {
+          // sprint("fafaf\n");
+        void* pa = alloc_page();
+        memcpy(pa, (void *)PTE2PA((*pte)), PGSIZE);
+          // uint64 origin_pa = PTE2PA(*pte);
+          //free_page((void*)origin_pa); // 尝试释放掉原来的内存
+        *pte = PA2PTE(pa) | PTE_V | prot_to_type(PROT_WRITE | PROT_READ, 1);
+      }
+      else {
+        user_vm_map((pagetable_t)current->pagetable, stval - stval%PGSIZE, PGSIZE, (uint64)alloc_page(), prot_to_type(PROT_WRITE | PROT_READ, 1));
+      }
       break;
     default:
       sprint("unknown page fault.\n");

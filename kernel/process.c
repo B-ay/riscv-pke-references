@@ -151,6 +151,7 @@ process* alloc_process() {
 
   procs[i].total_mapped_region = 4;
 
+  procs[i].ref = 0;  // 初始化子进程数
   // return after initialization.
   return &procs[i];
 }
@@ -180,6 +181,7 @@ int do_fork( process* parent)
   sprint( "will fork a child from parent %d.\n", parent->pid );
   process* child = alloc_process();
 
+  parent->ref++; // 子进程数目加一
   for( int i=0; i<parent->total_mapped_region; i++ ){
     // browse parent's vm space, and copy its trapframe and data segments,
     // map its code segment.
@@ -211,10 +213,13 @@ int do_fork( process* parent)
             if (free_block_filter[(heap_block - heap_bottom) / PGSIZE])  // skip free blocks
               continue;
 
-            void* child_pa = alloc_page();
-            memcpy(child_pa, (void*)lookup_pa(parent->pagetable, heap_block), PGSIZE);
+            // void* child_pa = alloc_page();
+            // memcpy(child_pa, (void*)lookup_pa(parent->pagetable, heap_block), PGSIZE);
+            void *child_pa = (void*)lookup_pa(parent->pagetable, heap_block);
             user_vm_map((pagetable_t)child->pagetable, heap_block, PGSIZE, (uint64)child_pa,
-                        prot_to_type(PROT_WRITE | PROT_READ, 1));
+                        // prot_to_type( PTE_U | PTE_RSW | PTE_A | PROT_READ, 1));
+                        prot_to_type( PROT_RSW | PROT_READ, 1));
+            pte_t *pte = page_walk(child->pagetable, heap_block, 1);
           }
 
           child->mapped_info[HEAP_SEGMENT].npages = parent->mapped_info[HEAP_SEGMENT].npages;
