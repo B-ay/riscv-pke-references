@@ -20,4 +20,12 @@
 // the trap frame used to assemble the user "process"
 #define USER_TRAP_FRAME 0x81300000
 
+#define USER_STACK_0 0x81100000
+#define USER_KSTACK_0 0x81200000
+#define USER_TRAP_FRAME_0 0x81300000
+
+#define USER_STACK_1 0x85100000
+#define USER_KSTACK_1 0x85200000
+#define USER_TRAP_FRAME_1 0x85300000
+
 #endif
