@@ -64,3 +64,86 @@ void switch_to(process* proc) {
   // note, return_to_user takes two parameters @ and after lab2_1.
   return_to_user(proc->trapframe, user_satp);
 }
+
+block *malloc_block() {
+  uint64 block_pa;
+  if (current->block_page_size > sizeof(block)) {
+    current->block_page_size -= sizeof(block);
+    block_pa = current->next_block_pa;
+    current->next_block_pa += sizeof(block);
+  }
+  else {
+    current->next_block_pa = (uint64)alloc_page();
+    current->block_page_size = PGSIZE;
+    current->block_page_size -= sizeof(block);
+    block_pa = current->next_block_pa;
+    current->next_block_pa += sizeof(block);
+  }
+  return (block*)block_pa;
+}
+
+uint64 do_better_allocate(long n) {
+  if (n > PGSIZE) panic("better_allocate failed,because your size is too large!\n");
+  // block *pre = current->free_blocks, *cur = current->free_blocks;
+  // while (cur != NULL) {
+  //   if (cur->size >= n) break;
+  //   pre = cur;
+  //   cur = cur->next;
+  // }
+  block *pre, *cur;
+  if (current->free_blocks == NULL) {
+    //sprint("找不到空闲块\n");
+    cur = malloc_block();
+    cur->pa = (uint64)alloc_page();
+    cur->va = g_ufree_page;
+    g_ufree_page += PGSIZE;
+    user_vm_map((pagetable_t)current->pagetable, cur->va, PGSIZE, (uint64)cur->pa, prot_to_type(PROT_WRITE | PROT_READ, 1));
+    cur->size = PGSIZE;
+    cur->next = current->free_blocks;
+    current->free_blocks = cur;
+    //sprint("空闲块分配完毕,大小为PGSIZE\n");
+  }
+  else {
+    cur = current->free_blocks;
+  }
+  if (cur->size >= n) {
+      block * temp = malloc_block();
+      temp->pa = cur->pa + n;
+      temp->va = cur->va + n;
+      temp->size = cur->size - n;
+      temp->next = cur->next;
+      current->free_blocks = temp;
+  }
+  else {
+      int left = n - cur->size;
+      void* pa = alloc_page();
+      uint64 va = g_ufree_page;
+      g_ufree_page += PGSIZE;
+      user_vm_map((pagetable_t)current->pagetable, cur->va+cur->size, left, (uint64)pa, prot_to_type(PROT_WRITE | PROT_READ, 1));
+      block * temp = malloc_block();
+      temp->pa = (uint64)pa + left;
+      temp->va = va + left;
+      temp->size = PGSIZE - left;
+      temp->next = cur->next;
+      current->free_blocks = temp;
+  }
+  cur->size -= n;
+  cur->next = current->used_blocks;
+  current->used_blocks = cur;
+  //sprint("better allocate done\n");
+  return cur->va;
+}
+
+void do_better_free(uint64 va) {
+  //sprint("better free begin\n");
+  block *pre, *cur = current->used_blocks;
+  while (cur != NULL) {
+    if (cur->va == va) break;
+    pre = cur;
+    cur = cur->next;
+  }
+  if (cur == NULL) panic("free failed,because the address you want to free is illegal!\n");
+  cur->next = current->free_blocks;
+  current->free_blocks = cur;
+  //sprint("better free finish\n");
+}
