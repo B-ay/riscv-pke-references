@@ -1,3 +1,37 @@
+# RISC-V PKE · 双核启动与用户态切换实验
+
+基于教育内核 PKE 的操作系统课程实验。默认分支为 `lab1_challenge3_multicore`，本页只描述当前分支已有代码，不代表完成了下方上游介绍中的全部实验。
+
+## 当前分支的代码证据
+
+- `kernel/machine/minit.c`：按 hart 进入启动流程。
+- `kernel/kernel.c`：以 hart ID 区分用户 trapframe、内核栈和用户栈，加载用户 ELF 并切换到用户态。
+- `kernel/process.c`：上下文与用户态切换。
+- `kernel/sync_utils.h`：使用 RISC-V `amoadd.w` 和等待循环实现的 barrier 辅助函数。
+- `user/app0.c`、`user/app1.c`：两个用户程序。
+- `Makefile`：构建内核及两个应用，`run` 使用 `spike -p2`。
+
+这些内容适合说明 RISC-V 特权级、陷阱上下文、多 hart 启动及同步基础，不等于完整多核调度器或完整操作系统。
+
+## 复现入口
+
+需要 Linux、RISC-V 交叉工具链与 Spike；环境细节见下方保留的上游说明。准备好工具链后：
+
+```sh
+make
+make run
+```
+
+当前 Makefile 与源码有实验特定的地址和双核假设，不应未经修改扩展为任意核数。本次仅核验代码，未在 Spike 或 FPGA 上执行。barrier 的完整内存序与重复使用语义也需单独分析。
+
+## 来源与贡献
+
+PKE 为既有教育项目，原许可与项目说明完整保留。简历应写“基于 PKE 的课程实验”，并明确本人修改文件、实现范围及运行结果。
+
+---
+
+## 保留的 PKE 项目说明
+
 ## about riscv-pke (Proxy Kernel for Education, a.k.a. PKE) ##
 ----------
 
